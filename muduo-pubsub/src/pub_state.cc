@@ -6,7 +6,6 @@
 #include <boost/bind.hpp>
 
 #include <iostream>
-#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/sysinfo.h>
@@ -34,11 +33,10 @@ string getContent()
 			long long virtualMemUsed = sysInfo.totalram - sysInfo.freeram - sysInfo.bufferram;
 			//virtualMemUsed += sysInfo.totalswap - sysInfo.freeswap;
 			//virtualMemUsed *= sysInfo.mem_unit;
-			std::ostringstream ostr;
-			ostr << virtualMemUsed/K_BYTE;
-			//change from std::string to muduo::string
-			string curContent = "the used memory in KByte:" + string(ostr.str().c_str());
-			return curContent;
+			char buffer[50];
+			//convert int to string
+			snprintf(buffer, sizeof(buffer), "the used memory(KByte) : %lld", virtualMemUsed/K_BYTE);
+			return string(buffer);
 		}
 }
 
