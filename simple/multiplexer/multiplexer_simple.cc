@@ -55,12 +55,14 @@ private:
 		}
 		else
 		{
+			//Once backend connection is down, release all the client connections;
 			backendConn_.reset();
 			for(std::map<int, TcpConnectionPtr>::iterator iter = clientConns_.begin();
 					iter != clientConns_.end(); ++iter)
 			{
 				iter->second->shutdown();
 			}
+			clientConns_.clear();//clean all client conns;
 			while(!availIds_.empty())
 			{
 				availIds_.pop();
