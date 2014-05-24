@@ -16,6 +16,8 @@
 #include <map>
 #include <queue>
 
+#include <stdlib.h>
+
 using namespace muduo;
 using namespace muduo::net;
 const int MAX_CLIENT_CONNS = 10; //65535
@@ -88,7 +90,7 @@ private:
 			{
 				int id = static_cast<uint8_t>(buf->peek()[1]);
 				id |= (static_cast<uint8_t>(buf->peek()[2])<<8); //id occupy two byte;
-				if(id >= 0)
+				if(id > 0)
 				{
 					std::map<int, TcpConnectionPtr>::iterator iter = clientConns_.find(id);
 					if(iter != clientConns_.end())
@@ -99,9 +101,25 @@ private:
 				else
 				{
 					string cmd(buf->peek()+HEADER_LEN, len);
-					LOG_INFO <<"Backend cmd" << cmd;
+					LOG_INFO <<"Backend cmd :" << cmd;
+					doBackendCommand(cmd);
 				}
 				buf->retrieve(len + HEADER_LEN);
+			}
+		}
+	}
+
+	void doBackendCommand(string &cmd)
+	{
+	  const string DisconnectCmd = "DISCONNECT";
+		if(cmd.size() > DisconnectCmd.size()
+				&& std::equal(DisconnectCmd.begin(), DisconnectCmd.end(), cmd.begin()))
+		{
+			int connId = atoi(&cmd[DisconnectCmd.size()]);
+			std::map<int, TcpConnectionPtr> ::iterator iter = clientConns_.find(connId);
+			if(iter != clientConns_.end())
+			{
+				iter->second->shutdown();
 			}
 		}
 	}
@@ -192,16 +210,16 @@ private:
 	std::queue<int> availIds_;
 };
 
-//int main(int argc, char* argv[])
-//{
-//	const uint16_t clientPort = 3333;
-//	const uint16_t serverPort = 9999;
-//	InetAddress listenAddr(clientPort);
-//	InetAddress backendAddr(serverPort);
-//	EventLoop loop;
-//	MultiplexServer server(&loop, listenAddr, backendAddr);
-//	server.start();
-//	loop.loop();
-//	return 0;
-//}
+int main(int argc, char* argv[])
+{
+	const uint16_t clientPort = 3333;
+	const uint16_t serverPort = 9999;
+	InetAddress listenAddr(clientPort);
+	InetAddress backendAddr(serverPort);
+	EventLoop loop;
+	MultiplexServer server(&loop, listenAddr, backendAddr);
+	server.start();
+	loop.loop();
+	return 0;
+}
 
