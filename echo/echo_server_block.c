@@ -1,7 +1,7 @@
 /*
- * echoserver.c
+ * echo_server_block.c
  *
- *  Created on: Jun 5, 2014
+ *  Created on: Jun 8, 2014
  *      Author: damonhao
  */
 
@@ -25,10 +25,9 @@ int main(int argc, char *argv[])
 		puts("usage:<program> <port>");
 		return 0;
 	}
-	puts("echo server up!");
+	puts("block echo server up!");
 	//set server address;
 	int port = atoi(argv[1]);
-	char buffer[MAXBUF];
 
 	struct sockaddr_in server_addr;
 	bzero(&server_addr, sizeof(server_addr));
@@ -49,7 +48,6 @@ int main(int argc, char *argv[])
 	if (bind(listen_sockfd, (struct sockaddr*) &server_addr, sizeof(server_addr))
 			!= 0)
 	{
-//		puts("bind error");
 		perror("bind error");
 		exit(errno);
 	}
@@ -59,34 +57,44 @@ int main(int argc, char *argv[])
 		perror("listen error");
 		exit(errno);
 	}
+
 	while (1)
 	{
-		int clientfd = -1;
 		struct sockaddr_in client_addr;
 		int addr_len = sizeof(client_addr);
-		//accept a connection (creating a data pipe)
-		clientfd = accept(listen_sockfd, (struct sockaddr*) &client_addr,
+		int clientfd = accept(listen_sockfd, (struct sockaddr*) &client_addr,
 				&addr_len);
-		printf("connection from %s:%d up\n", inet_ntoa(client_addr.sin_addr),
-				ntohs(client_addr.sin_port));
-		//Echo back anything received
-		int recv_num = recv(clientfd, buffer, MAXBUF, 0);
-		if (recv_num > 0)
+		pid_t pid;
+		if ((pid = fork()) < 0)
 		{
-			printf("recevied data size: %d\n", recv_num);
-			send(clientfd, buffer, recv_num, 0);
+			perror("fork");
+			exit(errno);
+		}
+		else if (pid == 0)
+		{
+			char buffer[MAXBUF];
+			printf("connection from %s:%d up\n", inet_ntoa(client_addr.sin_addr),
+					ntohs(client_addr.sin_port));
+			//Echo back anything received
+			int recv_num = 0;
+			while ((recv_num = recv(clientfd, buffer, MAXBUF, 0)) > 0)
+			{
+				printf("recevied data size: %d\n", recv_num);
+				send(clientfd, buffer, recv_num, 0);
+			}
+			if (recv_num < 0)
+			{
+				puts("received data error");
+			}
+			close(clientfd);
+			printf("connection from %s:%d down\n", inet_ntoa(client_addr.sin_addr),
+					ntohs(client_addr.sin_port));
+			break;
 		}
 		else
 		{
-			puts("received data error");
+			close(clientfd);
 		}
-//		send(clientfd, buffer, recv(clientfd, buffer, MAXBUF, 0), 0);
-		//close client fd;
-		close(clientfd);
-		printf("connection from %s:%d down\n", inet_ntoa(client_addr.sin_addr),
-				ntohs(client_addr.sin_port));
-
 	}
 	return 0;
 }
-
