@@ -51,7 +51,7 @@ int main(int agrc, char *argv[])
 	{
 		struct pollfd pfds[1];
 		pfds[0].fd = sockfd;
-		pfds[0].events = POLLOUT | POLLIN;
+		pfds[0].events = POLLOUT;
 		while (1)
 		{
 			poll(pfds, sizeof(pfds), -1);
