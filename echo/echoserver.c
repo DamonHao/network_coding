@@ -18,11 +18,16 @@
 
 #define MAXBUF	1024
 
-int main()
+int main(int argc, char *argv[])
 {
+	if (argc != 2)
+	{
+		puts("usage:<program> <port>");
+		return 0;
+	}
 	puts("echo server up!");
 	//set server address;
-	int port = 9999;
+	int port = atoi(argv[1]);
 	char buffer[MAXBUF];
 
 	struct sockaddr_in server_addr;
@@ -65,9 +70,22 @@ int main()
 		printf("connection from %s:%d up\n", inet_ntoa(client_addr.sin_addr),
 				ntohs(client_addr.sin_port));
 		//Echo back anything received
-		send(clientfd, buffer, recv(clientfd, buffer, MAXBUF, 0), 0);
+		int recv_num = recv(clientfd, buffer, MAXBUF, 0);
+		if (recv_num > 0)
+		{
+			printf("recevied data size: %d\n", recv_num);
+			send(clientfd, buffer, recv_num, 0);
+		}
+		else
+		{
+			puts("received data error");
+		}
+//		send(clientfd, buffer, recv(clientfd, buffer, MAXBUF, 0), 0);
 		//close client fd;
 		close(clientfd);
+		printf("connection from %s:%d down\n", inet_ntoa(client_addr.sin_addr),
+				ntohs(client_addr.sin_port));
+
 	}
 	return 0;
 }
