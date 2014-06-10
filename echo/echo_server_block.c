@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 	while (1)
 	{
 		struct sockaddr_in client_addr;
-		int addr_len = sizeof(client_addr);
+		socklen_t addr_len = sizeof(client_addr);
 		int clientfd = accept(listen_sockfd, (struct sockaddr*) &client_addr,
 				&addr_len);
 		pid_t pid;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 			perror("fork");
 			exit(errno);
 		}
-		else if (pid == 0)
+		else if (pid == 0) //in child progress
 		{
 			char buffer[MAXBUF];
 			printf("connection from %s:%d up\n", inet_ntoa(client_addr.sin_addr),
@@ -84,16 +84,22 @@ int main(int argc, char *argv[])
 			}
 			if (recv_num < 0)
 			{
-				puts("received data error");
+				perror("received data error");
 			}
 			close(clientfd);
 			printf("connection from %s:%d down\n", inet_ntoa(client_addr.sin_addr),
 					ntohs(client_addr.sin_port));
 			break;
 		}
-		else
+		else // in parent progress
 		{
 			close(clientfd);
+//			a test for close
+//			char message[] = "haha";
+//			if(send(clientfd, message, sizeof(message), 0) < 0 )
+//			{
+//				perror("parent send");
+//			}
 		}
 	}
 	return 0;

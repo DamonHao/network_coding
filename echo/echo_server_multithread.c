@@ -1,10 +1,11 @@
 /*
- * echo_server_block.c
+ * echo_server_multithread.c
  *
  *  Created on: Jun 8, 2014
  *      Author: damonhao
  */
 
+#include <string.h>
 #include <strings.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,8 +16,37 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #define MAXBUF	1024
+
+typedef struct PassInfo
+{
+	int socketfd_;
+	uint16_t port_;
+	char ip_[16]; //ipv4
+} PassInfo;
+
+void *threadFunc(void * pass_info)
+{
+	PassInfo pass_info_ = *((PassInfo *) pass_info);
+	printf("connection from %s:%d up\n", pass_info_.ip_, pass_info_.port_);
+	//Echo back anything received
+	char inputbuff[MAXBUF];
+	int recv_num = 0;
+	while ((recv_num = read(pass_info_.socketfd_, inputbuff, MAXBUF)) > 0)
+	{
+		printf("recevied data size: %d\n", recv_num);
+		write(pass_info_.socketfd_, inputbuff, recv_num);
+	}
+	if (recv_num < 0)
+	{
+		perror("received data error");
+	}
+	close(pass_info_.socketfd_);
+	printf("connection from %s:%d down\n", pass_info_.ip_, pass_info_.port_);
+	pthread_exit(NULL);
+}
 
 int main(int argc, char *argv[])
 {
@@ -57,50 +87,22 @@ int main(int argc, char *argv[])
 		perror("listen error");
 		exit(errno);
 	}
-
 	while (1)
 	{
 		struct sockaddr_in client_addr;
 		socklen_t addr_len = sizeof(client_addr);
 		int clientfd = accept(listen_sockfd, (struct sockaddr*) &client_addr,
 				&addr_len);
-		pid_t pid;
-		if ((pid = fork()) < 0)
+		PassInfo pass_info;
+		pass_info.socketfd_ = clientfd;
+		pass_info.port_ = ntohs(client_addr.sin_port);
+		strcpy(pass_info.ip_, inet_ntoa(client_addr.sin_addr));
+		pthread_t tid;
+		if (pthread_create(&tid, NULL, threadFunc, (void *) &pass_info) != 0)
 		{
-			perror("fork");
+			perror("thread create");
 			exit(errno);
 		}
-		else if (pid == 0) //in child progress
-		{
-			char buffer[MAXBUF];
-			printf("connection from %s:%d up\n", inet_ntoa(client_addr.sin_addr),
-					ntohs(client_addr.sin_port));
-			//Echo back anything received
-			int recv_num = 0;
-			while ((recv_num = recv(clientfd, buffer, MAXBUF, 0)) > 0)
-			{
-				printf("recevied data size: %d\n", recv_num);
-				send(clientfd, buffer, recv_num, 0);
-			}
-			if (recv_num < 0)
-			{
-				perror("received data error");
-			}
-			close(clientfd);
-			printf("connection from %s:%d down\n", inet_ntoa(client_addr.sin_addr),
-					ntohs(client_addr.sin_port));
-			break;
-		}
-		else // in parent progress
-		{
-			close(clientfd);
-//			a test for close
-//			char message[] = "haha";
-//			if(send(clientfd, message, sizeof(message), 0) < 0 )
-//			{
-//				perror("parent send");
-//			}
-		}
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
